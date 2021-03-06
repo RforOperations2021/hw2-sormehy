@@ -2,7 +2,8 @@
 title: "DLI Industry Projection Dashboard"
 output: 
  flexdashboard::flex_dashboard:
-   orientation: columns
+   orientation: rows
+   vertical_layout: scroll
    source_code: embed
 runtime: shiny
 ---
@@ -17,6 +18,8 @@ library(stringr)
 library(RColorBrewer)
 library(reshape2)
 library(plotly)
+library(DT)
+library(flexdashboard)
 ```
 
 ```{r data}
@@ -58,6 +61,12 @@ Changes.in.Employment = c("Change.Level", "Change.Percent", "Avg.Annual.Chng")
 
 ```
 
+```{r}
+#valueBox(42, caption = "Errors", icon="fa-thumbs-down")
+#valueBox(107, caption = "Trials", icon="fa-tag")
+#valueBox(247, caption = "Connections", icon="fa-random")
+```
+
 
 Inputs Column {.sidebar}
 -----------------------------------------------------------------------
@@ -82,13 +91,46 @@ selectInput("changes_emp", label = "Select Type of Change:", choices = Changes.i
 #radioButtons("plot_type", "Weight plot type", 
 #             choices = c("Histogram", "Violin plot"), selected = c("Histogram"))
 
+
 ```
 
 
-Page with Tabset {.tabset .tabset-fade}
+Row {data-height=100}
 -----------------------------------------------------------------------
 
-### Segment Plot of Number of Workers in Given Industry
+### Articles per Day
+```{r}
+flexdashboard::valueBox(25, 
+                        caption = "Total NAICS Industries",
+                        color = "warning",
+                        icon = 'ion-android-home')
+
+```
+
+
+### Another something 
+```{r}
+flexdashboard::valueBox(2028, 
+                        caption = "Projection Year",
+                        color = "red",
+                        icon = "ion-android-notifications-none")
+
+```
+
+### Yet again
+```{r}
+flexdashboard::valueBox(3, 
+                        caption = "Visualizations",
+                        color = "purple",
+                        icon = "ion-android-options")
+```
+
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Segment Plot of Number of Workers in Given Industry {data-height=600}
+
 
 ```{r context="server"}
 mpg_subset <- reactive({
@@ -174,7 +216,7 @@ plotlyOutput("mod.plot")
 
 ```
 
-### Histogram of Changes
+### Histogram of Changes {data-height=600}
 
 ```{r context="server"}
 
@@ -191,15 +233,15 @@ output$plot_hist <- renderPlotly({
     
     # Generate Plot ----------------------------------------------
     ggplot(data = industry_subset(), aes(x = reorder(Industry.Title, -Change.Level), y = Change.Level, fill = Industry.Title)) + geom_bar(stat = "identity") +
-      theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
+      theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+ 
     labs(x='Industry', y='Projected Difference in Count (2018 to 2028)')
 }  else if(input$changes_emp == "Change.Percent") {
     ggplot(data = industry_subset(), aes(x = reorder(Industry.Title, -Change.Percent), y = Change.Percent, fill = Industry.Title)) + geom_bar(stat = "identity")+
-    theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
+    theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+ 
     labs(x='Industry', y='Projected Percentage Change (2018 to 2028)')
 }else{
   ggplot(data = industry_subset(), aes(x = reorder(Industry.Title, -Avg.Annual.Chng), y = Avg.Annual.Chng, fill = Industry.Title)) + geom_bar(stat = "identity")+
-    theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
+    theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+ 
     labs(x='Industry', y='Projected Average Annual Change (2018 to 2028)')
 }
 })
@@ -217,15 +259,50 @@ plotlyOutput("plot_hist")
 
 ```
 
-Column {data-width=350}
+### Direct Comparison '18 - '28 {data-height=600}
+
+```{r context="server"}
+
+industry_subset <- reactive({
+  data %>%
+    filter(
+      str_detect(NAICS, input$naics_var)
+    )
+})
+output$compare_plot <- renderPlotly({
+  ggplot(data = industry_subset(), mapping = aes(x = reorder(Industry.Title, -Emp.2018), y = Emp.2018)) + 
+    geom_point(data=industry_subset(), mapping = aes(x = reorder(Industry.Title, -Emp.2028), y = Emp.2028), color = 'grey') + 
+    geom_point() +
+    coord_flip() + 
+    labs(x='', y='2018 (black) vs 2028 (projected count, grey)', title='Employed in Pennsylvania')
+})
+
+```
+
+```{r context="render"}
+plotlyOutput("compare_plot")
+
+```
+
+
+
+
+Column 
 -----------------------------------------------------------------------
 
 ### Industry Details {data-width=400}
 
 ```{r}
-renderTable({
-  industry_subset()
-})
+#renderTable({
+#  industry_subset()
+#})
 ```
 
+```{r}
+renderDT({
+  DT::datatable(industry_subset(),
+    rownames = FALSE, options = list(pageLength = 7)
+  )
+})
+```
 
